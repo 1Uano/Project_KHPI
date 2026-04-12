@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Internal System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <span class="header-icon">🏥</span>
+                <h1>Hospital System</h1>
+            </div>
+            <div class="header-right">
+                <span id="authStatus" class="auth-status">Не авторизовано</span>
+                <button id="logoutBtn" class="btn-danger" style="display: none;">Вийти</button>
+            </div>
+        </header>
+
+        <hr>
+
+        <main id="mainContainer">
+            <section id="loginSection">
+                <h2>Вхід в систему</h2>
+                <form id="loginForm" novalidate>
+                    <div class="field-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" value="admin@hospital.com" autocomplete="email" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="loginPassword">Пароль</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="loginPassword" value="admin123" autocomplete="current-password" required>
+                            <button type="button" class="eye-btn" id="toggleLoginPassword" title="Показати пароль">
+                                <svg id="eyeIconLogin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Увійти</button>
+                    <p id="loginError" class="field-error" style="margin-top:10px;"></p>
+                </form>
+            </section>
+
+            <section id="welcomeSection" style="display: none;">
+                <div class="welcome-card">
+                    <span class="welcome-icon">✓</span>
+                    <h2 id="welcomeMessage">Вітаємо в системі!</h2>
+                    <p>Ви успішно авторизовані. Доступ до розширених функцій здійснюється через спеціалізоване програмне забезпечення.</p>
+                </div>
+            </section>
+
+            <section id="adminSection" style="display: none;">
+                <h2>Панель адміністратора — Додавання користувача</h2>
+                <form id="createUserForm" novalidate>
+
+                    <div class="field-group" id="emailGroup">
+                        <label for="cuEmail">Email <span class="required">*</span></label>
+                        <input type="email" id="cuEmail" autocomplete="off" placeholder="example@hospital.com" required>
+                        <span class="field-hint" id="emailHint"></span>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="cuName">Повне ім'я <span class="required">*</span></label>
+                        <input type="text" id="cuName" placeholder="Іваненко Іван Іванович" required>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="cuRole">Роль <span class="required">*</span></label>
+                        <select id="cuRole">
+                            <option value="ADMIN">ADMIN — Адміністратор</option>
+                            <option value="DOCTOR">DOCTOR — Лікар</option>
+                            <option value="NURSE">NURSE — Медсестра</option>
+                            <option value="PATIENT">PATIENT — Пацієнт</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group specialization-block" id="cuSpecContainer" style="display: none;">
+                        <label for="cuSpecialization">Спеціалізація <span class="required">*</span></label>
+                        <select id="cuSpecialization">
+                            <option value="THERAPIST">Терапевт</option>
+                            <option value="PEDIATRICIAN">Педіатр</option>
+                            <option value="SURGEON">Загальний хірург</option>
+                            <option value="ORTHOPEDIST">Ортопед-травматолог</option>
+                            <option value="CARDIOLOGIST">Кардіолог</option>
+                            <option value="NEUROLOGIST">Невролог</option>
+                            <option value="NONE">Без спеціалізації</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="cuBirthDate">Дата народження</label>
+                        <div class="date-wrapper">
+                            <input type="date" id="cuBirthDate">
+                            <span class="date-icon">📅</span>
+                        </div>
+                    </div>
+
+                    <div class="field-group" id="passwordGroup">
+                        <label for="cuPassword">Пароль <span class="required">*</span></label>
+                        <div class="password-wrapper">
+                            <input type="password" id="cuPassword" autocomplete="new-password" placeholder="Введіть надійний пароль" required>
+                            <button type="button" class="eye-btn" id="togglePassword" title="Показати пароль">
+                                <svg id="eyeIconCreate" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="strength-bar-wrap" id="strengthBarWrap" style="display:none;">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <span class="strength-label" id="strengthLabel"></span>
+                        </div>
+
+                        <ul class="password-requirements" id="pwdRequirements" style="display:none;">
+                            <li id="req-length">&#x25CB; Мінімум 8 символів</li>
+                            <li id="req-upper">&#x25CB; Велика літера (A–Z)</li>
+                            <li id="req-lower">&#x25CB; Мала літера (a–z)</li>
+                            <li id="req-digit">&#x25CB; Цифра (0–9)</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="createSubmitBtn">Створити користувача</button>
+                    <p id="createStatus"></p>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

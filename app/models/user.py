@@ -1,7 +1,10 @@
-﻿from enum import Enum
+from enum import Enum
 from typing import Optional
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, BeforeValidator
+from typing_extensions import Annotated
+
+PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class UserRole(str, Enum):
     ADMIN = "ADMIN"
@@ -9,21 +12,29 @@ class UserRole(str, Enum):
     NURSE = "NURSE"
     PATIENT = "PATIENT"
 
+class DoctorSpecialization(str, Enum):
+    THERAPIST = "THERAPIST"
+    PEDIATRICIAN = "PEDIATRICIAN"
+    SURGEON = "SURGEON"
+    ORTHOPEDIST = "ORTHOPEDIST"
+    CARDIOLOGIST = "CARDIOLOGIST"
+    NEUROLOGIST = "NEUROLOGIST"
+    NONE = "NONE"
+
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
     role: UserRole
     is_active: bool = True
-    specialization: Optional[str] = None  
-    category: Optional[str] = None        
-    birth_date: Optional[date] = None     
-
+    specialization: Optional[DoctorSpecialization] = DoctorSpecialization.NONE
+    category: Optional[str] = None
+    birth_date: Optional[date] = None
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8)
 
 class UserResponse(UserBase):
-    id: str = Field(..., alias="_id")
+    id: PyObjectId = Field(default=None, alias="_id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     model_config = {

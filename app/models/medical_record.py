@@ -1,11 +1,14 @@
-﻿from datetime import datetime
+from datetime import datetime
 from typing import Optional
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, BeforeValidator
+from typing_extensions import Annotated
+
+PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class RecordStatus(str, Enum):
-    ACTIVE = "ACTIVE"         
-    DISCHARGED = "DISCHARGED" 
+    ACTIVE = "ACTIVE"
+    DISCHARGED = "DISCHARGED"
 
 class MedicalRecordBase(BaseModel):
     patient_id: str
@@ -19,7 +22,7 @@ class MedicalRecordCreate(MedicalRecordBase):
     pass
 
 class MedicalRecordResponse(MedicalRecordBase):
-    id: str = Field(..., alias="_id")
+    id: PyObjectId = Field(default=None, alias="_id")
 
     model_config = {
         "populate_by_name": True,
