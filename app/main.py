@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     print(f"🚀 Connected to MongoDB: {settings.DATABASE_NAME}")
     yield
     db.client.close()
-    print("💤 MongoDB connection closed")
+    print("💤 MongoDB connection closed, oh no")
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
@@ -23,3 +23,4 @@ app.include_router(records_router)
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "database": settings.DATABASE_NAME}
+
