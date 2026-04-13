@@ -10,10 +10,11 @@ from app.api.prescription import router as precription_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.client = AsyncIOMotorClient(settings.MONGODB_URL)
-    print(f"🚀 Connected to MongoDB: {settings.DATABASE_NAME}")
+    await db.client.admin.command("ping")
+    print(f"Connected to MongoDB: {settings.DATABASE_NAME}")
     yield
     db.client.close()
-    print("💤 MongoDB connection closed")
+    print(" MongoDB connection closed")
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
