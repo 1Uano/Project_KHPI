@@ -20,6 +20,13 @@ async def lifespan(app: FastAPI):
     database = db.client[settings.DATABASE_NAME]
     print(f"🚀 Connected to MongoDB: {settings.DATABASE_NAME}")
 
+    existing_collections = await database.list_collection_names()
+
+    for collection_name in ["users", "medical_records", "prescriptions"]:
+        if collection_name not in existing_collections:
+            await database.create_collection(collection_name)
+            print(f"📦 Created collection: {collection_name}")
+
     from app.repositories.user_repository import UserRepository
     from app.models.user import UserCreate, UserRole
     from app.core.security import get_password_hash
