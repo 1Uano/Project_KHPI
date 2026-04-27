@@ -1,0 +1,37 @@
+{
+    "app_title": "Госпітальна Система Управління",
+    "login": {
+        "title": "Вхід в систему",
+        "email_label": "Електронна пошта",
+        "password_label": "Пароль",
+        "submit_btn": "Увійти"
+    },
+    "roles": {
+        "admin": "Адміністратор",
+        "doctor": "Лікар",
+        "nurse": "Медсестра",
+        "patient": "Пацієнт"
+    },
+    "tabs": {
+        "my_patients": "Мої пацієнти",
+        "prescriptions": "Призначення",
+        "information_and_diagnoses": "Інформація та Діагнози",
+        "discharge": "Виписка"
+    },
+    "card": {
+        "primary_diagnosis": "Головний діагноз",
+        "secondary_diagnoses": "Супутні захворювання",
+        "admission_date": "Дата госпіталізації",
+        "discharge_date": "Дата виписки",
+        "status_active": "Відкрита",
+        "status_closed": "Виписано"
+    },
+    "prescriptions": {
+        "type_medicine": "Медикаментозне лікування",
+        "type_procedure": "Медична процедура",
+        "type_surgery": "Хірургічна операція",
+        "status_pending": "Очікує виконання",
+        "status_completed": "Виконано",
+        "execute_btn": "Виконати"
+    }
+}

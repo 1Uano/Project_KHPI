@@ -14,12 +14,21 @@ class MedicalRecordBase(BaseModel):
     patient_id: str
     doctor_id: str
     diagnosis: str
+    secondary_diagnoses: list[str] = []
     status: RecordStatus = RecordStatus.ACTIVE
     admission_date: datetime = Field(default_factory=datetime.utcnow)
     discharge_date: Optional[datetime] = None
 
 class MedicalRecordCreate(MedicalRecordBase):
     pass
+
+class MedicalRecordDiagnosesUpdate(BaseModel):
+    diagnosis: str  # Primary
+    secondary_diagnoses: list[str]
+
+class MedicalRecordDischarge(BaseModel):
+    final_diagnosis: str
+    discharge_date: datetime
 
 class MedicalRecordResponse(MedicalRecordBase):
     id: PyObjectId = Field(default=None, alias="_id")

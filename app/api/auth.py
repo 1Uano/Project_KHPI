@@ -20,6 +20,6 @@ async def login_for_access_token(
         raise InvalidCredentialsException()
 
     access_token = create_access_token(
-        data={"sub": user_dict["email"], "role": user_dict.get("role")}
+        data={"sub": user_dict["email"], "role": user_dict.get("role"), "id": str(user_dict["_id"])}
     )
     return {"access_token": access_token, "token_type": "bearer"}

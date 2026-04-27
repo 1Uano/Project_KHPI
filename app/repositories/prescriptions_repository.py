@@ -2,6 +2,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi.encoders import jsonable_encoder
 from app.models.prescriptions import PrescriptionCreate
+from datetime import datetime
 
 class PrescriptionRepository:
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -31,3 +32,38 @@ class PrescriptionRepository:
             doc["_id"] = str(doc["_id"])
             prescriptions.append(doc)
         return prescriptions
+
+    async def get_assigned_to(self, user_id: str) -> list:
+        prescriptions = []
+        async for doc in self.collection.find({"assigned_to": user_id}):
+            doc["_id"] = str(doc["_id"])
+            prescriptions.append(doc)
+        return prescriptions
+
+    async def execute_prescription(self, prescription_id: str, execution_date: datetime) -> bool:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(prescription_id)},
+            {"$set": {
+                "status": "COMPLETED",
+                "completed_at": execution_date
+            }}
+        )
+        return result.modified_count > 0
+
+    async def abort_pending_prescriptions(self, record_id: str) -> bool:
+        result = await self.collection.update_many(
+            {"record_id": record_id, "status": "PENDING"},
+            {"$set": {
+                "status": "ABORTED"
+            }}
+        )
+        return True
+
+    async def update_assignee(self, prescription_id: str, new_assignee: str) -> bool:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(prescription_id)},
+            {"$set": {
+                "assigned_to": new_assignee
+             }}
+        )
+        return result.modified_count > 0
