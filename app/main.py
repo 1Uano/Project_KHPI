@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi.encoders import jsonable_encoder
 
 from app.core.config import settings
 from app.core.exceptions import AppException
@@ -70,7 +71,7 @@ async def app_exception_handler(request: Request, exc: AppException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"detail": "Передані дані мають невірний формат", "errors": exc.errors()},
+        content={"detail": "Передані дані мають невірний формат", "errors": jsonable_encoder(exc.errors())},
     )
 
 

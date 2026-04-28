@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, Field, BeforeValidator
+from pydantic import BaseModel, EmailStr, Field, BeforeValidator, field_validator
 from typing_extensions import Annotated
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -32,6 +32,17 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Пароль має містити щонайменше одну цифру')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Пароль має містити щонайменше одну велику літеру')
+        if not any(char.islower() for char in v):
+            raise ValueError('Пароль має містити щонайменше одну маленьку літеру')
+        return v
 
 class UserResponse(UserBase):
     id: PyObjectId = Field(default=None, alias="_id")

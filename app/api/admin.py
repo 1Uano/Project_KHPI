@@ -7,10 +7,10 @@ from app.repositories.user_repository import UserRepository
 from app.api.dependencies import require_role
 from app.core.security import get_password_hash
 
-router = APIRouter(prefix="/admin", tags=["Admin Testing"])
+router = APIRouter(prefix="/admin", tags=["Admin Management"])
 
-@router.post("/users/")
-async def create_test_user(
+@router.post("/users/", summary="Create new user")
+async def create_user(
         user_in: UserCreate,
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.ADMIN]))
@@ -24,6 +24,6 @@ async def create_test_user(
     new_user_id = await repo.create_user(user_to_db)
 
     return {
-        "message": "Ура! Користувач успішно створений у MongoDB!",
+        "message": "Користувача успішно створено",
         "user_id": new_user_id
     }
