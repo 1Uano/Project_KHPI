@@ -60,6 +60,29 @@ function parseJwt(token) {
     } catch { return null; }
 }
 
+window.updateUI = updateUI;
+
+window.deactivateCard = function(recordId, event) {
+    if (event) event.stopPropagation();
+    customConfirm("Деактивувати цю медичну картку? Усі призначення також буде скасовано.", async () => {
+        try {
+            const res = await fetch(`${API_URL}/records/${recordId}/deactivate`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bearer ${currentToken}` }
+            });
+            if (res.ok) {
+                customAlert("Картку та її призначення деактивовано.");
+                loadPatientRecords(currentPatientViewId);
+            } else {
+                const data = await res.json();
+                customAlert("Помилка: " + (data.detail || "Не вдалося деактивувати"));
+            }
+        } catch(e) {
+             customAlert("Помилка з'єднання");
+        }
+    }, { okText: "Деактивувати", okColor: "#e74c3c" });
+};
+
 function updateUI() {
     document.getElementById("createStatus").innerText = "";
 
@@ -318,6 +341,7 @@ let allUsers = [];
 let currentPage = 1;
 const itemsPerPage = 5;
 let currentPatientViewId = null;
+let currentProfileUserId = null;
 
 const tabCreateUser = document.getElementById("tabCreateUser");
 const tabUserList = document.getElementById("tabUserList");
@@ -346,6 +370,31 @@ tabUserList.addEventListener("click", () => {
 document.getElementById("backToUsersBtn").addEventListener("click", () => {
     adminUserProfileView.style.display = "none";
     adminUserListView.style.display = "block";
+});
+
+document.getElementById("deleteUserBtn").addEventListener("click", () => {
+    if (!currentProfileUserId) return;
+    
+    customConfirm("Деактивувати цього пацієнта? Його картки та призначення також будуть деактивовані.", async () => {
+        try {
+            const res = await fetch(`${API_URL}/admin/users/${currentProfileUserId}/deactivate`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bearer ${currentToken}` }
+            });
+            
+            if (res.ok) {
+                customAlert("Користувача успішно деактивовано");
+                adminUserProfileView.style.display = "none";
+                adminUserListView.style.display = "block";
+                loadUsersList();
+            } else {
+                const data = await res.json();
+                customAlert("Помилка: " + (data.detail || "Не вдалося деактивувати"));
+            }
+        } catch(e) {
+            customAlert("Помилка з'єднання з сервером");
+        }
+    }, { okText: "Деактивувати", okColor: "#e74c3c" });
 });
 
 async function loadUsersList() {
@@ -445,6 +494,7 @@ function openProfile(u) {
     adminUserProfileView.style.display = "block";
     
     const uid = u._id || u.id;
+    currentProfileUserId = uid;
     const roleNames = { "ADMIN":"Адміністратор", "DOCTOR":"Лікар", "NURSE":"Медсестра", "PATIENT":"Пацієнт" };
     const specName = u.role === "DOCTOR" && u.specialization !== "NONE" ? ` / ${u.specialization}` : "";
     
@@ -458,13 +508,15 @@ function openProfile(u) {
     }
 
     document.getElementById("userProfileHeader").innerHTML = `
-        <h2 style="margin-bottom:10px">${u.full_name}</h2>
-        <span class="badge ${u.role}" style="margin-bottom:15px">${roleNames[u.role] || u.role}${specName}</span>
+        <h2 style="margin-bottom:10px; ${u.is_active === false ? 'text-decoration: line-through; color: #7f8c8d;' : ''}">${u.full_name}</h2>
+        <span class="badge ${u.role}" style="margin-bottom:15px; ${u.is_active === false ? 'background:#ccc; color:#666;' : ''}">${u.is_active === false ? 'Деактивовано' : (roleNames[u.role] || u.role)}${specName}</span>
         <div style="display:flex; gap:20px; font-size:0.9em; flex-wrap:wrap">
             <p><strong>Email:</strong> ${u.email}</p>
             <p><strong>Р.Н.:</strong> ${u.birth_date ? new Date(u.birth_date).toLocaleDateString("uk-UA") : "Не вказано"}${ageStr}</p>
         </div>
     `;
+    
+    document.getElementById("deleteUserBtn").style.display = (u.role === "PATIENT" && u.is_active !== false) ? "inline-block" : "none";
     
     const section = document.getElementById("patientRecordsSection");
     if(u.role === "PATIENT") {
@@ -524,15 +576,28 @@ async function loadPatientRecords(patientId) {
 
                     const card = document.createElement("div");
                     card.className = "block-card";
+                    
+                    let statusLabel = r.status === 'ACTIVE' ? 'Відкритий' : 'Виписано';
+                    let statusClass = r.status === 'ACTIVE' ? 'DOCTOR' : 'NURSE';
+                    if(r.status === 'DEACTIVATED') {
+                        statusLabel = 'Деактивовано';
+                        statusClass = 'PATIENT'; // grey style maybe
+                    }
+                    
+                    const deactivateBtn = (r.status === 'ACTIVE') 
+                        ? `<button onclick="deactivateCard('${r._id || r.id}', event)" class="btn-danger" style="margin-top: 10px; width: 100%; font-size: 0.85em; padding: 6px;">Деактивувати картку</button>`
+                        : '';
+
                     card.innerHTML = `
                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                            <strong>Діагноз: ${r.diagnosis}</strong>
-                           <span class="badge ${r.status === 'ACTIVE' ? 'DOCTOR' : 'NURSE'}">${r.status === 'ACTIVE' ? 'Відкритий' : 'Виписано'}</span>
+                           <span class="badge ${statusClass}">${statusLabel}</span>
                        </div>
-                       <div class="card-body" style="background:#f4f5f8;">
+                       <div class="card-body" style="background:#f4f5f8; ${r.status==='DEACTIVATED'?'opacity:0.6;':''}">
                            <p><strong>Госпіталізовано:</strong> ${admission}</p>
                            <p><strong>Виписано:</strong> ${discharge}</p>
                            <p><strong>Лікуючий лікар:</strong> ${docName}</p>
+                           ${deactivateBtn}
                        </div>
                     `;
                     container.appendChild(card);

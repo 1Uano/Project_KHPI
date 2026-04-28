@@ -67,3 +67,10 @@ class MedicalRecordRepository:
             }}
         )
         return result.modified_count > 0
+
+    async def update_status(self, record_id: str, status: str) -> bool:
+        result = await self.collection.update_one(
+            {"_id": ObjectId(record_id)},
+            {"$set": {"status": status}}
+        )
+        return result.modified_count > 0

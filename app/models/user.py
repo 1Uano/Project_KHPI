@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, Field, BeforeValidator, field_validator
+from pydantic import BaseModel, EmailStr, Field, BeforeValidator, field_validator, model_validator
 from typing_extensions import Annotated
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -43,6 +43,12 @@ class UserCreate(UserBase):
         if not any(char.islower() for char in v):
             raise ValueError('Пароль має містити щонайменше одну маленьку літеру')
         return v
+
+    @model_validator(mode='after')
+    def validate_doctor_specialization(self):
+        if self.role == UserRole.DOCTOR and (self.specialization is None or self.specialization == DoctorSpecialization.NONE):
+            raise ValueError('Спеціалізація є обов\'язковою для ролі DOCTOR')
+        return self
 
 class UserResponse(UserBase):
     id: PyObjectId = Field(default=None, alias="_id")

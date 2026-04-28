@@ -15,18 +15,22 @@ from app.api.records import router as records_router
 from app.api.prescription import router as precription_router
 
 
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.client = AsyncIOMotorClient(settings.MONGODB_URL)
     database = db.client[settings.DATABASE_NAME]
-    print(f"🚀 Connected to MongoDB: {settings.DATABASE_NAME}")
+    logger.info(f"🚀 Connected to MongoDB: {settings.DATABASE_NAME}")
 
     existing_collections = await database.list_collection_names()
 
     for collection_name in ["users", "medical_records", "prescriptions"]:
         if collection_name not in existing_collections:
             await database.create_collection(collection_name)
-            print(f"📦 Created collection: {collection_name}")
+            logger.info(f"📦 Created collection: {collection_name}")
 
     from app.repositories.user_repository import UserRepository
     from app.models.user import UserCreate, UserRole
@@ -35,7 +39,7 @@ async def lifespan(app: FastAPI):
     repo = UserRepository(database)
     admin_user = await repo.collection.find_one({"email": "admin@hospital.com"})
     if not admin_user:
-        print("🌱 Creating default admin user...")
+        logger.info("🌱 Creating default admin user...")
         hashed_password = get_password_hash("admin123")
         new_admin = UserCreate(
             email="admin@hospital.com",
@@ -47,13 +51,13 @@ async def lifespan(app: FastAPI):
         user_dict = new_admin.model_dump()
         user_dict["password"] = hashed_password
         await repo.collection.insert_one(user_dict)
-        print("✅ Default admin created.")
+        logger.info("✅ Default admin created.")
     else:
-        print("⚡ Default admin already exists.")
+        logger.info("⚡ Default admin already exists.")
 
     yield
     db.client.close()
-    print("💤 MongoDB connection closed.")
+    logger.info("💤 MongoDB connection closed.")
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)

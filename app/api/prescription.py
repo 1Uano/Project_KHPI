@@ -5,9 +5,8 @@ from pydantic import BaseModel
 from app.models.prescriptions import PrescriptionCreate
 from app.models.user import UserRole, UserResponse
 from app.database.db import get_database
-from app.repositories.prescriptions_repository import PrescriptionRepository
+from app.services.prescription_service import PrescriptionService
 from app.api.dependencies import require_role
-from datetime import datetime
 
 router = APIRouter(prefix="/prescriptions", tags=["Prescriptions"])
 
@@ -17,8 +16,8 @@ async def create_prescription(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
 ):
-    repo = PrescriptionRepository(db)
-    new_prescription_id = await repo.create_prescription(prescription_in)
+    service = PrescriptionService(db)
+    new_prescription_id = await service.create_prescription(prescription_in)
     return {
         "message": "Призначення успішно створено!",
         "prescription_id": new_prescription_id
@@ -29,8 +28,8 @@ async def get_all_prescriptions(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
 ):
-    repo = PrescriptionRepository(db)
-    return await repo.get_all()
+    service = PrescriptionService(db)
+    return await service.get_all_prescriptions()
 
 @router.get("/{prescription_id}")
 async def get_prescription_by_id(
@@ -38,10 +37,8 @@ async def get_prescription_by_id(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
 ):
-    repo = PrescriptionRepository(db)
-    prescription = await repo.get_by_id(prescription_id)
-    if not prescription:
-        raise HTTPException(status_code=404, detail="Призначення не знайдено")
+    service = PrescriptionService(db)
+    prescription = await service.get_prescription_by_id(prescription_id)
     return prescription
 
 @router.get("/record/{record_id}")
@@ -50,16 +47,16 @@ async def get_prescriptions_by_record(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN, UserRole.PATIENT, UserRole.NURSE]))
 ):
-    repo = PrescriptionRepository(db)
-    return await repo.get_by_record(record_id)
+    service = PrescriptionService(db)
+    return await service.get_prescriptions_by_record(record_id)
 
 @router.get("/assigned/me")
 async def get_my_prescriptions(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.NURSE]))
 ):
-    repo = PrescriptionRepository(db)
-    return await repo.get_assigned_to(current_user.id)
+    service = PrescriptionService(db)
+    return await service.get_my_prescriptions(current_user.id)
 
 @router.patch("/{prescription_id}/execute")
 async def execute_prescription(
@@ -67,18 +64,8 @@ async def execute_prescription(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.NURSE]))
 ):
-    repo = PrescriptionRepository(db)
-    prescription = await repo.get_by_id(prescription_id)
-    if not prescription:
-        raise HTTPException(status_code=404, detail="Призначення не знайдено")
-        
-    p_type = prescription.get("type", "")
-    
-    # Check permissions
-    if current_user.role == UserRole.NURSE and p_type == "SURGERY":
-        raise HTTPException(status_code=403, detail="Медсестра не може виконувати операції")
-        
-    await repo.execute_prescription(prescription_id, datetime.utcnow())
+    service = PrescriptionService(db)
+    await service.execute_prescription(prescription_id, current_user)
     return {"message": "Призначення виконано!"}
 
 class PrescriptionAssigneeUpdate(BaseModel):
@@ -91,13 +78,16 @@ async def update_prescription_assignee(
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
 ):
-    repo = PrescriptionRepository(db)
-    prescription = await repo.get_by_id(prescription_id)
-    if not prescription:
-        raise HTTPException(status_code=404, detail="Призначення не знайдено")
-        
-    success = await repo.update_assignee(prescription_id, update_data.new_assignee)
-    if not success:
-        raise HTTPException(status_code=400, detail="Не вдалося змінити виконавця")
-        
+    service = PrescriptionService(db)
+    await service.update_prescription_assignee(prescription_id, update_data.new_assignee)
     return {"message": "Виконавця успішно змінено!"}
+
+@router.patch("/{prescription_id}/deactivate")
+async def deactivate_prescription(
+        prescription_id: str,
+        db: AsyncIOMotorDatabase = Depends(get_database),
+        current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
+):
+    service = PrescriptionService(db)
+    await service.deactivate_prescription(prescription_id, current_user)
+    return {"message": "Призначення успішно скасовано"}

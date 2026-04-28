@@ -30,3 +30,12 @@ class UserRepository:
         if user:
             return UserResponse(**user)
         return None
+
+    async def update_user_status(self, user_id: str, is_active: bool) -> bool:
+        if not ObjectId.is_valid(user_id):
+            return False
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"is_active": is_active}}
+        )
+        return result.modified_count > 0

@@ -9,6 +9,7 @@ PyObjectId = Annotated[str, BeforeValidator(str)]
 class RecordStatus(str, Enum):
     ACTIVE = "ACTIVE"
     DISCHARGED = "DISCHARGED"
+    DEACTIVATED = "DEACTIVATED"
 
 class MedicalRecordBase(BaseModel):
     patient_id: str
