@@ -15,6 +15,7 @@ class PrescriptionStatus(str, Enum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+    ABORTED = "ABORTED"
 
 class PrescriptionBase(BaseModel):
     record_id: str

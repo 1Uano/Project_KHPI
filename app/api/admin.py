@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import List
 
 from app.models.user import UserCreate, UserRole, UserResponse
 from app.database.db import get_database
@@ -27,3 +28,23 @@ async def create_user(
         "message": "Користувача успішно створено",
         "user_id": new_user_id
     }
+
+@router.get("/users/", response_model=List[UserResponse])
+async def get_all_users(
+        db: AsyncIOMotorDatabase = Depends(get_database),
+        current_user: UserResponse = Depends(require_role([UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE, UserRole.PATIENT]))
+):
+    repo = UserRepository(db)
+    return await repo.get_all_users()
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(
+        user_id: str,
+        db: AsyncIOMotorDatabase = Depends(get_database),
+        current_user: UserResponse = Depends(require_role([UserRole.ADMIN]))
+):
+    repo = UserRepository(db)
+    user = await repo.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Користувача не знайдено")
+    return user
