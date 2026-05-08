@@ -18,7 +18,7 @@ from app.api.prescription import router as precription_router
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
-
+  
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.client = AsyncIOMotorClient(settings.MONGODB_URL)

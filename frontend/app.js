@@ -521,6 +521,7 @@ function openProfile(u) {
     const section = document.getElementById("patientRecordsSection");
     if(u.role === "PATIENT") {
         currentPatientViewId = uid;
+        currentPatientViewIsActive = (u.is_active !== false);
         document.getElementById("mrPatientName").value = u.full_name;
         document.getElementById("mrPatientDob").value = u.birth_date || "";
         
@@ -554,6 +555,11 @@ async function loadPatientRecords(patientId) {
             if (hasActive) {
                 btn.disabled = true;
                 btn.innerText = "Пацієнт лікується";
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+            } else if (!currentPatientViewIsActive) {
+                btn.disabled = true;
+                btn.innerText = "Пацієнт деактивований";
                 btn.style.opacity = "0.5";
                 btn.style.cursor = "not-allowed";
             } else {

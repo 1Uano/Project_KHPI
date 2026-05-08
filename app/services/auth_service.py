@@ -18,6 +18,10 @@ class AuthService:
             logger.error(f"Невдала спроба входу для користувача: {email}")
             raise InvalidCredentialsException()
 
+        if user_dict.get("is_active") is False:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Акаунт деактивовано")
+
         access_token = create_access_token(
             data={"sub": user_dict["email"], "role": user_dict.get("role"), "id": str(user_dict["_id"])}
         )

@@ -9,12 +9,19 @@ from app.api.dependencies import require_role
 
 router = APIRouter(prefix="/records", tags=["Medical Records"])
 
+from app.services.user_service import UserService
+
 @router.post("/")
 async def create_medical_record(
         record_in: MedicalRecordCreate,
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
 ):
+    user_service = UserService(db)
+    patient = await user_service.get_user_by_id(record_in.patient_id)
+    if not patient.is_active:
+        raise HTTPException(status_code=400, detail="Не можна госпіталізувати деактивованого пацієнта")
+        
     service = MedicalRecordService(db)
     new_record_id = await service.create_record(record_in)
     return {
@@ -49,6 +56,8 @@ async def update_diagnoses(
 ):
     service = MedicalRecordService(db)
     record = await service.get_record_by_id(record_id)
+    if record.get("status") == "DEACTIVATED":
+        raise HTTPException(status_code=400, detail="Не можна змінювати деактивовану картку")
     if current_user.role != UserRole.ADMIN and record.get("doctor_id") != str(current_user.id):
         raise HTTPException(status_code=403, detail="Тільки адміністратор або лікуючий лікар можуть редагувати діагноз")
     await service.update_diagnoses(record_id, diag_data.diagnosis, diag_data.secondary_diagnoses)

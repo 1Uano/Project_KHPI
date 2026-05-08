@@ -10,12 +10,19 @@ from app.api.dependencies import require_role
 
 router = APIRouter(prefix="/prescriptions", tags=["Prescriptions"])
 
+from app.services.record_service import MedicalRecordService
+
 @router.post("/")
 async def create_prescription(
         prescription_in: PrescriptionCreate,
         db: AsyncIOMotorDatabase = Depends(get_database),
         current_user: UserResponse = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))
 ):
+    record_service = MedicalRecordService(db)
+    record = await record_service.get_record_by_id(prescription_in.record_id)
+    if record.get("status") == "DEACTIVATED":
+        raise HTTPException(status_code=400, detail="Не можна призначати лікування для деактивованої медкартки")
+        
     service = PrescriptionService(db)
     new_prescription_id = await service.create_prescription(prescription_in)
     return {
