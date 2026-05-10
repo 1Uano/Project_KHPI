@@ -6,7 +6,7 @@ from jwt.exceptions import InvalidTokenError
 
 from app.core.config import settings
 from app.database.db import get_database
-from app.repositories.user_repository import UserRepository
+from app.repositories.user_repository import UserRepository, TokenBlacklistRepository
 from app.models.user import UserResponse, UserRole
 from app.core.exceptions import NotAuthenticatedException, PermissionDeniedException
 
@@ -16,6 +16,14 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> UserResponse:
+    """
+    FastAPI-залежність для отримання поточного авторизованого користувача.
+
+    Перевіряє JWT токен, чи не відкликано його (blacklist), та чи існує
+    відповідний користувач в базі даних.
+
+    :raises NotAuthenticatedException: Якщо токен відсутній, недійсний або відкликаний.
+    """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
@@ -24,11 +32,15 @@ async def get_current_user(
     except InvalidTokenError:
         raise NotAuthenticatedException()
 
+    blacklist = TokenBlacklistRepository(db)
+    if await blacklist.is_blacklisted(token):
+        raise NotAuthenticatedException(detail="Токен відкликано. Будь ласка, увійдіть знову.")
+
     repo = UserRepository(db)
     user_dict = await repo.collection.find_one({"email": email})
     if user_dict is None:
         raise NotAuthenticatedException()
-        
+
     return UserResponse(**user_dict)
 
 def require_role(allowed_roles: list[UserRole]):

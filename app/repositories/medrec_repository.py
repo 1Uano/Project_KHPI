@@ -74,3 +74,10 @@ class MedicalRecordRepository:
             {"$set": {"status": status}}
         )
         return result.modified_count > 0
+
+    async def reassign_doctor(self, old_doctor_id: str, new_doctor_id: str) -> int:
+        result = await self.collection.update_many(
+            {"doctor_id": old_doctor_id, "status": "ACTIVE"},
+            {"$set": {"doctor_id": new_doctor_id}}
+        )
+        return result.modified_count

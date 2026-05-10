@@ -74,3 +74,10 @@ class PrescriptionRepository:
             {"$set": {"status": status}}
         )
         return result.modified_count > 0
+
+    async def reassign_nurse_prescriptions(self, nurse_id: str) -> int:
+        result = await self.collection.update_many(
+            {"assigned_to": nurse_id, "status": "PENDING"},
+            [{"$set": {"assigned_to": "$prescribed_by"}}]
+        )
+        return result.modified_count

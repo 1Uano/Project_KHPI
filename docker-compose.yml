@@ -39,6 +39,19 @@ services:
       - mongo
     restart: unless-stopped
 
+  tests:
+    build: .
+    container_name: fastapi_tests
+    command: python -m pytest tests/ -v --tb=short
+    environment:
+      - MONGODB_URL=mongodb://mongo:27017
+      - DATABASE_NAME=khpi_hospital_test
+      - PROJECT_NAME=Hospital_API
+    volumes:
+      - .:/app
+    profiles:
+      - testing
+
   frontend:
     image: nginx:alpine
     container_name: frontend_app

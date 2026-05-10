@@ -32,3 +32,17 @@ class PermissionDeniedException(AppException):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="У вас немає прав для виконання цієї дії"
         )
+
+class NotFoundException(AppException):
+    def __init__(self, detail: str = "Ресурс не знайдено"):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=detail
+        )
+
+class BadRequestException(AppException):
+    def __init__(self, detail: str = "Невірний запит"):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail
+        )

@@ -21,3 +21,29 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+
+def create_refresh_token(data: dict) -> str:
+    """
+    Створює refresh JWT токен з подовженим терміном дії.
+
+    :param data: Корисне навантаження (payload), зазвичай містить {'sub': email}.
+    :return: Підписаний refresh JWT токен.
+    """
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_token(token: str) -> Optional[dict]:
+    """
+    Безпечно декодує JWT токен.
+
+    :param token: JWT токен для декодування.
+    :return: Словник payload або None якщо токен недійсний чи прострочений.
+    """
+    try:
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except jwt.PyJWTError:
+        return None

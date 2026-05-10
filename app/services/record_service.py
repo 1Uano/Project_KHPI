@@ -90,3 +90,7 @@ class MedicalRecordService:
             if r.get('status') == 'ACTIVE':
                 await self.deactivate_record(str(r['_id']))
         return True
+
+    async def reassign_doctor_records(self, old_doctor_id: str, new_doctor_id: str) -> int:
+        logger.info(f"Перепризначення пацієнтів від лікаря {old_doctor_id} до {new_doctor_id}")
+        return await self.repo.reassign_doctor(old_doctor_id, new_doctor_id)

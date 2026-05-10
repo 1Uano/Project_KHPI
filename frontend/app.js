@@ -375,7 +375,26 @@ document.getElementById("backToUsersBtn").addEventListener("click", () => {
 document.getElementById("deleteUserBtn").addEventListener("click", () => {
     if (!currentProfileUserId) return;
     
-    customConfirm("Деактивувати цього пацієнта? Його картки та призначення також будуть деактивовані.", async () => {
+    const u = allUsers.find(user => (user._id || user.id) === currentProfileUserId);
+    if (!u) return;
+
+    if (u.role === "DOCTOR") {
+        const select = document.getElementById("ddNewDoctorSelect");
+        select.innerHTML = '<option value="" disabled selected>Оберіть нового лікаря...</option>';
+        allUsers.forEach(doc => {
+            if (doc.role === "DOCTOR" && (doc._id || doc.id) !== currentProfileUserId && doc.is_active !== false) {
+                select.innerHTML += `<option value="${doc._id || doc.id}">${doc.full_name} (${doc.specialization !== 'NONE' ? doc.specialization : 'Лікар'})</option>`;
+            }
+        });
+        document.getElementById("ddStatus").innerText = "";
+        document.getElementById("deactivateDoctorModal").style.display = "flex";
+        return;
+    }
+    
+    const msg = u.role === "NURSE" ? "Деактивувати цю медсестру? Усі її активні призначення будуть автоматично повернуті лікарям." 
+              : "Деактивувати цього пацієнта? Його картки та призначення також будуть деактивовані.";
+
+    customConfirm(msg, async () => {
         try {
             const res = await fetch(`${API_URL}/admin/users/${currentProfileUserId}/deactivate`, {
                 method: "PATCH",
@@ -395,6 +414,56 @@ document.getElementById("deleteUserBtn").addEventListener("click", () => {
             customAlert("Помилка з'єднання з сервером");
         }
     }, { okText: "Деактивувати", okColor: "#e74c3c" });
+});
+
+window.deactivateUserFromAdmin = async function(userId, event) {
+    if (event) event.stopPropagation();
+    customConfirm("Деактивувати цього пацієнта?", async () => {
+        try {
+            const res = await fetch(`${API_URL}/admin/users/${userId}/deactivate`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bearer ${currentToken}` }
+            });
+            if (res.ok) {
+                customAlert("Пацієнта успішно деактивовано");
+                if (currentProfileUserId) loadDoctorActiveRecordsForAdmin(currentProfileUserId);
+            } else {
+                const data = await res.json();
+                customAlert("Помилка: " + (data.detail || "Не вдалося деактивувати"));
+            }
+        } catch(e) { customAlert("Помилка з'єднання"); }
+    }, { okText: "Деактивувати", okColor: "#e74c3c" });
+};
+
+document.getElementById("closeDeactivateDoctorModal")?.addEventListener("click", () => {
+    document.getElementById("deactivateDoctorModal").style.display = "none";
+});
+
+document.getElementById("deactivateDoctorForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const newDocId = document.getElementById("ddNewDoctorSelect").value;
+    try {
+        const res = await fetch(`${API_URL}/admin/users/${currentProfileUserId}/deactivate`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${currentToken}` },
+            body: JSON.stringify({ new_doctor_id: newDocId })
+        });
+        if (res.ok) {
+            document.getElementById("deactivateDoctorModal").style.display = "none";
+            customAlert("Лікаря успішно деактивовано, а пацієнтів переведено");
+            adminUserProfileView.style.display = "none";
+            adminUserListView.style.display = "block";
+            loadUsersList();
+        } else {
+            const data = await res.json();
+            document.getElementById("ddStatus").innerText = "Помилка: " + (data.detail || "Не вдалося деактивувати");
+            document.getElementById("ddStatus").style.color = "#e74c3c";
+        }
+    } catch(err) {
+        document.getElementById("ddStatus").innerText = "Помилка сервера";
+    } finally { btn.disabled = false; }
 });
 
 async function loadUsersList() {
@@ -461,7 +530,7 @@ function renderUsers() {
         const specName = u.role === "DOCTOR" && u.specialization !== "NONE" ? ` / ${u.specialization}` : "";
 
         let ageStr = "";
-        if (u.birth_date && u.role !== "PATIENT") {
+        if (u.birth_date) {
             const dob = new Date(u.birth_date);
             const ageDiffMs = Date.now() - dob.getTime();
             const ageDate = new Date(ageDiffMs);
@@ -499,7 +568,7 @@ function openProfile(u) {
     const specName = u.role === "DOCTOR" && u.specialization !== "NONE" ? ` / ${u.specialization}` : "";
     
     let ageStr = "";
-    if (u.birth_date && u.role !== "PATIENT") {
+    if (u.birth_date) {
         const dob = new Date(u.birth_date);
         const ageDiffMs = Date.now() - dob.getTime();
         const ageDate = new Date(ageDiffMs);
@@ -516,7 +585,7 @@ function openProfile(u) {
         </div>
     `;
     
-    document.getElementById("deleteUserBtn").style.display = (u.role === "PATIENT" && u.is_active !== false) ? "inline-block" : "none";
+    document.getElementById("deleteUserBtn").style.display = (u.is_active !== false && u.role !== "ADMIN") ? "inline-block" : "none";
     
     const section = document.getElementById("patientRecordsSection");
     if(u.role === "PATIENT") {
@@ -526,17 +595,65 @@ function openProfile(u) {
         document.getElementById("mrPatientDob").value = u.birth_date || "";
         
         const btn = document.getElementById("openMedicalCardModalBtn");
+        btn.style.display = "inline-block";
         btn.disabled = true;
         btn.innerText = "+ Госпіталізувати";
         btn.style.opacity = "0.5";
         btn.style.cursor = "not-allowed";
         
+        document.getElementById("patientRecordsSectionTitle").innerText = "Стаціонар. Випадки госпіталізації";
         section.style.display = "block";
         loadPatientRecords(uid);
+    } else if (u.role === "DOCTOR") {
+        currentPatientViewId = null;
+        document.getElementById("openMedicalCardModalBtn").style.display = "none";
+        document.getElementById("patientRecordsSectionTitle").innerText = "Активні картки лікаря";
+        section.style.display = "block";
+        loadDoctorActiveRecordsForAdmin(uid);
     } else {
         currentPatientViewId = null;
         section.style.display = "none";
     }
+}
+
+async function loadDoctorActiveRecordsForAdmin(doctorId) {
+    const container = document.getElementById("patientRecordsContainer");
+    container.innerHTML = "<p>Завантаження...</p>";
+    try {
+        const res = await fetch(`${API_URL}/records/`, { headers: { "Authorization": `Bearer ${currentToken}` }});
+        if (res.ok) {
+            const allRecords = await res.json();
+            const doctorRecords = allRecords.filter(r => r.doctor_id === doctorId && r.status === "ACTIVE");
+            if (doctorRecords.length === 0) {
+                container.innerHTML = "<p>Немає активних карток.</p>";
+            } else {
+                container.innerHTML = "";
+                doctorRecords.forEach(r => {
+                    const admission = new Date(r.admission_date).toLocaleString("uk-UA");
+                    
+                    const patInfo = allUsers.find(du => (du._id || du.id) === r.patient_id);
+                    const patName = patInfo ? patInfo.full_name : "Невідомий пацієнт";
+
+                    const card = document.createElement("div");
+                    card.className = "block-card";
+                    card.innerHTML = `
+                       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                           <strong>Діагноз: ${r.diagnosis} (Пацієнт: ${patName})</strong>
+                           <div style="display:flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                               <span class="badge DOCTOR">Відкритий</span>
+                               <button onclick="deactivateCard('${r._id || r.id}', event)" class="btn-danger" style="width: auto; font-size: 0.85em; padding: 4px 8px;">Деактивувати картку</button>
+                           </div>
+                       </div>
+                       <div class="card-body" style="background:#f4f5f8;">
+                           <p><strong>Госпіталізовано:</strong> ${admission}</p>
+                           <p><strong>Пацієнт:</strong> ${patName}</p>
+                       </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        }
+    } catch (e) { container.innerHTML = "Помилка"; }
 }
 
 async function loadPatientRecords(patientId) {
@@ -590,20 +707,18 @@ async function loadPatientRecords(patientId) {
                         statusClass = 'PATIENT'; // grey style maybe
                     }
                     
-                    const deactivateBtn = (r.status === 'ACTIVE') 
-                        ? `<button onclick="deactivateCard('${r._id || r.id}', event)" class="btn-danger" style="margin-top: 10px; width: 100%; font-size: 0.85em; padding: 6px;">Деактивувати картку</button>`
-                        : '';
-
                     card.innerHTML = `
                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                            <strong>Діагноз: ${r.diagnosis}</strong>
-                           <span class="badge ${statusClass}">${statusLabel}</span>
+                           <div style="display:flex; gap: 10px; align-items: center;">
+                               <span class="badge ${statusClass}">${statusLabel}</span>
+                               ${r.status === 'ACTIVE' ? `<button onclick="deactivateCard('${r._id || r.id}', event)" class="btn-danger" style="width: auto; font-size: 0.85em; padding: 4px 8px;">Деактивувати картку</button>` : ''}
+                           </div>
                        </div>
                        <div class="card-body" style="background:#f4f5f8; ${r.status==='DEACTIVATED'?'opacity:0.6;':''}">
                            <p><strong>Госпіталізовано:</strong> ${admission}</p>
                            <p><strong>Виписано:</strong> ${discharge}</p>
                            <p><strong>Лікуючий лікар:</strong> ${docName}</p>
-                           ${deactivateBtn}
                        </div>
                     `;
                     container.appendChild(card);
